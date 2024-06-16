@@ -11,7 +11,6 @@ import numpy as np
 from collections import deque
 from sklearn.preprocessing import StandardScaler
 import folium
-import socket
 import random
 from keras.models import load_model
 import gpxpy
@@ -43,7 +42,7 @@ class VideoWidget(QWidget):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
-        self.video_capture = cv2.VideoCapture('rtsp://your_rtsp_stream')
+        self.video_capture = cv2.VideoCapture('C:\\Users\\mikhe\\OneDrive\\Рабочий стол\\диплом\\ddd\\gr_kr.MOV')
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
 
@@ -63,7 +62,7 @@ class VideoWidget(QWidget):
 
     def start_video(self):
         if not self.timer.isActive():
-            self.video_capture = cv2.VideoCapture('rtsp://your_rtsp_stream')
+            self.video_capture = cv2.VideoCapture('C:\\Users\\mikhe\\OneDrive\\Рабочий стол\\диплом\\ddd\\gr_kr.MOV')
             self.timer.start(30)
 
     def stop_video(self):
@@ -168,6 +167,15 @@ class MapWidget(QWidget):
         self.webview = QWebEngineView()
         layout.addWidget(self.webview)
 
+        сord = [55.855243, 37.480871]
+
+        cord_ar = [56.097979, 35.879816]
+
+        icon = folium.CustomIcon(
+        icon_image,
+        icon_size=(40, 40),
+        icon_anchor=(30, 30))
+
         self.polygon_points_ar = [[56.100011, 35.873705], [56.102597, 35.877817], [56.097671, 35.884515], [56.094740, 35.881293]]
         self.polygon_points = [[55.855336, 37.480697], [55.855336, 37.4811039], [55.855336, 37.481103], [55.855133, 37.480705]]
 
@@ -176,8 +184,7 @@ class MapWidget(QWidget):
             tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attr='Esri', name='Esri Satellite', overlay=False, control=True).add_to(self.map)
 
-        self.icon = folium.CustomIcon(icon_image, icon_size=(40, 40), icon_anchor=(30, 30))
-        self.marker = folium.Marker(location=[55.855172, 37.480891], popup="My Location", icon=self.icon, draggable=True)
+        self.marker = folium.Marker(location=[55.855172, 37.480891], popup="My Location", icon=icon, draggable=True)
         self.map.add_child(self.marker)
 
         self.track_coordinates = [self.marker.location]  
@@ -199,30 +206,28 @@ class MapWidget(QWidget):
         self.map.save("map.html")
         self.webview.setHtml(open("map.html").read())
 
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind(("0.0.0.0", 12345))  # Replace with your UDP port
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.receive_telemetry)
-        self.timer.start(1000)
+    def move_marker_random(self):
+        new_location = [random.uniform(min(self.polygon_points)[0], max(self.polygon_points)[0]), 
+                        random.uniform(min(self.polygon_points, key=lambda x: x[1])[1], 
+                                       max(self.polygon_points, key=lambda x: x[1])[1])]
 
-
-        if not ray_tracing(self.udp_socket[0], self.udp_socket[1], self.polygon_points):
+        if not ray_tracing(new_location[0], new_location[1], self.polygon_points):
             return
         
-        inside_polygon = ray_tracing(self.udp_socket[0], self.udp_socket[1], self.polygon_points)
+        inside_polygon = ray_tracing(new_location[0], new_location[1], self.polygon_points)
         
         if inside_polygon:
             self.status_label.setText("Статус: Внутри полигона")
         else:
             self.status_label.setText("Статус: Вне полигона")
 
-        self.marker.location = self.udp_socket
+        self.marker.location = new_location
 
-        self.track_coordinates.append(self.udp_socket)
+        self.track_coordinates.append(new_location)
         
         self.track.locations = self.track_coordinates
 
-        self.coordinates_label.setText(f"Координаты: {self.udp_socket[0]}, {self.udp_socket[1]}")
+        self.coordinates_label.setText(f"Координаты: {new_location[0]}, {new_location[1]}")
 
         self.map.save("map.html")
         self.webview.setHtml(open("map.html").read())
